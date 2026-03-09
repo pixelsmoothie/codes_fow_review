@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Secure Stego | Start Your Steganography Adventure</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Press+Start+2P&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="css/vars.css?v=2">
+  <script>
+    const THEMES = {
+      cyber: { accent: '#f0187b', dim: '#8b0a47', rgb: '240, 24, 123', glow: 'rgba(240, 24, 123, 0.2)' },
+      neon: { accent: '#00d4ff', dim: '#005f73', rgb: '0, 212, 255', glow: 'rgba(0, 212, 255, 0.2)' },
+      matrix: { accent: '#22c55e', dim: '#15803d', rgb: '34, 197, 94', glow: 'rgba(34, 197, 94, 0.2)' },
+      crimson: { accent: '#e11d48', dim: '#be123c', rgb: '225, 29, 72', glow: 'rgba(225, 29, 72, 0.2)' },
+      amber: { accent: '#f59e0b', dim: '#d97706', rgb: '245, 158, 11', glow: 'rgba(245, 158, 11, 0.2)' },
+      purple: { accent: '#a855f7', dim: '#7c3aed', rgb: '168, 85, 247', glow: 'rgba(168, 85, 247, 0.2)' }
+    };
+    (function () {
+      var t = localStorage.getItem('ss_theme') || 'purple';
+      var theme = THEMES[t] || THEMES.cyber;
+      document.documentElement.style.setProperty('--accent', theme.accent);
+      document.documentElement.style.setProperty('--accent-dim', theme.dim);
+      document.documentElement.style.setProperty('--accent-rgb', theme.rgb);
+      document.documentElement.style.setProperty('--accent-glow', theme.glow);
+
+      // Reset non-green themes to cyber if needed
+      var validCyber = Object.keys(THEMES);
+      if (!t || !validCyber.includes(t)) {
+        localStorage.setItem('ss_theme', 'cyber');
+      }
+    })();
+  </script>
+  <link rel="stylesheet" href="css/layout.css?v=2">
+  <link rel="stylesheet" href="css/components.css?v=2">
+  <link rel="stylesheet" href="css/chat.css?v=2">
+  <link rel="stylesheet" href="css/ml.css?v=2">
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+</head>
+
+<body>
+
+  <!-- Pixel starfield canvas background -->
+  <canvas id="pixel-bg-canvas"
+    style="position:fixed;inset:0;z-index:0;pointer-events:none;image-rendering:pixelated;"></canvas>
+
+  <section id="onboard" class="onboard-screen">
+    <div class="pixel-panel">
+      <div class="pixel-panel-header">
+        <div class="pixel-icon-row">
+          <span class="pixel-icon pixel-icon-green"></span>
+          <span class="pixel-icon pixel-icon-yellow"></span>
+          <span class="pixel-icon pixel-icon-red"></span>
+        </div>
+        <span class="pixel-title">Secure &#128279; Link</span>
+      </div>
+      <div class="pixel-panel-body">
+        <div class="onboard-tabs" style="display:flex;gap:12px;margin-bottom:1.5rem;font-family:var(--font-pixel);">
+          <button type="button" id="onboard-tab-login" class="tab-link is-active" style="flex:1;">Login</button>
+          <button type="button" id="onboard-tab-register" class="tab-link" style="flex:1;">Register</button>
+        </div>
+        <div class="pixel-form">
+          <div class="form-group" id="group-name" style="display:none;">
+            <label>Display Name</label>
+            <input id="onboard-name" type="text" placeholder="NinjaName" autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label>Email</label>
+            <input id="onboard-email" type="email" placeholder="agent@stego.com" autocomplete="off"
+              style="width:100%;padding:0.7rem 0.9rem;font-family:var(--font-pixel);font-size:1.15rem;color:var(--text);background:var(--bg-input);border:2px solid var(--text-muted);">
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input id="onboard-password" type="password" placeholder="••••••••" autocomplete="off"
+              style="width:100%;padding:0.7rem 0.9rem;font-family:var(--font-pixel);font-size:1.15rem;color:var(--text);background:var(--bg-input);border:2px solid var(--text-muted);">
+          </div>
+          <div class="form-group" id="group-avatar" style="display:none;">
+            <label>Your avatar</label>
+            <div class="avatar-btn-row">
+              <div class="avatar-display-circle" id="avatar-display-circle">
+                <!-- selected avatar renders here -->
+              </div>
+              <button type="button" id="avatar-pick-btn" class="btn-avatar-pick">Choose Avatar &#9660;</button>
+            </div>
+          </div>
+
+          <!-- Avatar picker modal overlay -->
+          <div id="avatar-modal" class="avatar-modal-overlay" style="display:none;">
+            <div class="avatar-modal-panel">
+              <div class="avatar-modal-header">
+                <span></span>
+                <button type="button" id="avatar-modal-close" class="avatar-modal-close">&#10005;</button>
+              </div>
+              <div class="avatar-modal-body">
+                <div class="avatar-picker" id="avatar-picker">
+                  <div class="avatar-option is-selected" data-avatar="ninja" title="Ninja">
+                    <svg width="48" height="48" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"
+                      shape-rendering="crispEdges">
+                      <rect width="16" height="16" fill="#1a0a2e" />
+                      <rect x="5" y="2" width="6" height="1" fill="#a855f7" />
+                      <rect x="4" y="3" width="8" height="5" fill="#7c3aed" />
+                      <rect x="5" y="4" width="2" height="1" fill="#fff" />
+                      <rect x="9" y="4" width="2" height="1" fill="#fff" />
+                      <rect x="5" y="5" width="2" height="1" fill="#60a5fa" />
+                      <rect x="9" y="5" width="2" height="1" fill="#60a5fa" />
+                      <rect x="4" y="8" width="8" height="1" fill="#a855f7" />
+                      <rect x="3" y="9" width="10" height="4" fill="#6d28d9" />
+                      <rect x="3" y="13" width="4" height="2" fill="#7c3aed" />
+                      <rect x="9" y="13" width="4" height="2" fill="#7c3aed" />
+                    </svg>
+                  </div>
+                  <div class="avatar-option" data-avatar="hacker" title="Hacker">
+                    <svg width="48" height="48" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"
+                      shape-rendering="crispEdges">
+                      <rect width="16" height="16" fill="#0a1a0a" />
+                      <rect x="4" y="1" width="8" height="1" fill="#00ff88" />
+                      <rect x="4" y="2" width="8" height="6" fill="#1a2a1a" />
+                      <rect x="5" y="3" width="2" height="2" fill="#00ff88" />
+                      <rect x="9" y="3" width="2" height="2" fill="#00ff88" />
+                      <rect x="6" y="6" width="4" height="1" fill="#00ff88" />
+                      <rect x="4" y="8" width="8" height="5" fill="#1a2a1a" />
+                      <rect x="5" y="9" width="6" height="1" fill="#00ff88" />
+                      <rect x="5" y="11" width="2" height="2" fill="#00ff88" />
+                      <rect x="9" y="11" width="2" height="2" fill="#00ff88" />
+                      <rect x="4" y="13" width="3" height="2" fill="#1a2a1a" />
+                      <rect x="9" y="13" width="3" height="2" fill="#1a2a1a" />
+                    </svg>
+                  </div>
+                  <div class="avatar-option" data-avatar="ghost" title="Ghost">
+                    <svg width="48" height="48" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"
+                      shape-rendering="crispEdges">
+                      <rect width="16" height="16" fill="#0a0a1a" />
+                      <rect x="5" y="2" width="6" height="1" fill="#e2e8f0" />
+                      <rect x="3" y="3" width="10" height="7" fill="#e2e8f0" />
+                      <rect x="2" y="4" width="12" height="5" fill="#e2e8f0" />
+                      <rect x="5" y="5" width="2" height="2" fill="#0a0a1a" />
+                      <rect x="9" y="5" width="2" height="2" fill="#0a0a1a" />
+                      <rect x="6" y="5" width="1" height="1" fill="#60a5fa" />
+                      <rect x="10" y="5" width="1" height="1" fill="#60a5fa" />
+                      <rect x="2" y="9" width="12" height="5" fill="#e2e8f0" />
+                      <rect x="3" y="13" width="2" height="2" fill="#e2e8f0" />
+                      <rect x="6" y="13" width="2" height="2" fill="#e2e8f0" />
+                      <rect x="9" y="13" width="2" height="2" fill="#e2e8f0" />
+                      <rect x="12" y="13" width="2" height="2" fill="#e2e8f0" />
+                    </svg>
+                  </div>
+                  <div class="avatar-option" data-avatar="robot" title="Robot">
+                    <svg width="48" height="48" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"
+                      shape-rendering="crispEdges">
+                      <rect width="16" height="16" fill="#0f0f1a" />
+                      <rect x="7" y="1" width="2" height="2" fill="#94a3b8" />
+                      <rect x="3" y="3" width="10" height="7" fill="#334155" />
+                      <rect x="2" y="4" width="1" height="4" fill="#475569" />
+                      <rect x="13" y="4" width="1" height="4" fill="#475569" />
+                      <rect x="5" y="5" width="2" height="2" fill="#60a5fa" />
+                      <rect x="9" y="5" width="2" height="2" fill="#60a5fa" />
+                      <rect x="5" y="8" width="6" height="1" fill="#f59e0b" />
+                      <rect x="4" y="10" width="8" height="5" fill="#1e293b" />
+                      <rect x="5" y="11" width="2" height="3" fill="#334155" />
+                      <rect x="9" y="11" width="2" height="3" fill="#334155" />
+                      <rect x="3" y="13" width="2" height="2" fill="#334155" />
+                      <rect x="11" y="13" width="2" height="2" fill="#334155" />
+                    </svg>
+                  </div>
+                </div>
+                <div class="avatar-modal-divider">or upload your own (32&#215;32 pixelified)</div>
+                <div class="avatar-upload-zone" id="avatar-upload-zone">
+                  <input type="file" id="avatar-upload-input" accept="image/*">
+                  <span class="avatar-upload-label">&#128247; Click or drop image to pixelify</span>
+                </div>
+                <div class="avatar-preview-wrap" id="avatar-preview-wrap">
+                  <canvas id="avatar-pixel-canvas" class="avatar-pixel-preview" width="32" height="32"></canvas>
+                  <div class="avatar-preview-info" id="avatar-preview-info"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <button type="button" class="btn btn-enter-chat" id="onboard-register-btn">Sign In</button>
+          <div id="onboard-status" class="output-box" aria-live="polite"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div id="app-shell" class="app-shell is-hidden">
+    <header class="header">
+      <nav class="nav">
+        <a href="#" class="logo">Secure Stego</a>
+        <div class="nav-tabs">
+          <button class="tab-link is-active" data-tab="chat">Chat</button>
+          <button class="tab-link" data-tab="test">Test</button>
+          <button class="tab-link" data-tab="ml">ML</button>
+        </div>
+        <div class="nav-right">
+          <span id="nav-user-pill" class="nav-pill">Not connected</span>
+          <span id="nav-online-pill" class="nav-pill" style="margin-left:8px;font-size:0.75rem;opacity:0.7;"></span>
+        </div>
+      </nav>
+    </header>
+
+    <div class="app-body">
+      <main class="app-main">
+
+        <!-- CHAT TAB -->
+        <section id="tab-chat" class="tab-panel is-active">
+          <div class="chat-layout">
+            <div class="chat-layout-inner">
+              <aside class="chat-sidebar">
+                <div class="chat-sidebar-header">
+                  <div class="chat-sidebar-title-row">
+                    <div class="chat-sidebar-title">CONTACTS</div>
+                    <div class="chat-header-actions">
+                      <button type="button" class="icon-btn" id="sidebar-add-friend-btn" title="Add Contact / Requests"
+                        style="position:relative;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                          stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                          <line x1="12" y1="5" x2="12" y2="19"></line>
+                          <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        <span id="requests-badge-dot"
+                          style="display:none; position:absolute; top:-7px; right:-7px; min-width:17px; height:17px; background:var(--accent); border-radius:50%; border:2px solid var(--bg); font-family:var(--font-main); font-size:0.65rem; color:var(--bg); font-weight:700; line-height:13px; text-align:center; padding:0 3px; pointer-events:none;"></span>
+                      </button>
+                      <button type="button" class="icon-btn" id="sidebar-profile-btn" title="User Profile">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                          stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                          <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                      </button>
+                      <button type="button" class="icon-btn" id="sidebar-settings-btn" title="Settings">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                          stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                          <circle cx="12" cy="12" r="3"></circle>
+                          <path
+                            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z">
+                          </path>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="chat-sidebar-you">
+                    <div>You: <strong id="chat-self-name-display">...</strong></div>
+                    <div class="code-block">
+                      <span class="code-label">Code:</span>
+                      <span id="my-unique-id" class="code-value">----</span>
+                      <button id="copy-my-id-btn" class="copy-btn-mini">COPY</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Friend Panel: Add Contact + Pending Requests -->
+                <div id="sidebar-friend-panel" class="sidebar-friend-panel" style="display:none;">
+                  <h4>Add Contact</h4>
+                  <div style="display:flex; gap:8px;">
+                    <input type="text" id="add-friend-code" placeholder="Enter Friend Code"
+                      style="flex:1; font-size:0.75rem; padding:6px; background:var(--bg-input); border:1px solid rgba(255,255,255,0.1); color:var(--text); font-family:var(--font-pixel);">
+                    <button type="button" id="add-friend-btn" class="btn"
+                      style="padding:4px 10px; font-size:0.7rem; background:var(--accent); color:var(--bg); border:none;">ADD</button>
+                  </div>
+                  <div id="add-friend-status" style="font-size:0.65rem; margin-top:6px; font-family:var(--font-pixel);">
+                  </div>
+
+                  <div id="sidebar-requests-area" style="display:none; margin-top:1.25rem;">
+                    <h4>Pending Requests</h4>
+                    <div id="sidebar-requests-list" class="requests-list-sidebar">
+                      <!-- Dynamic request items go here -->
+                    </div>
+                  </div>
+                </div>
+
+                <div id="contacts-list" class="contacts-list">
+                  <div class="contacts-empty">No one online yet.<br>Wait for others to join.</div>
+                </div>
+              </aside>
+              <div class="chatgpt-shell">
+                <div id="chat-no-convo" class="chat-no-convo">
+                  <div class="chat-no-convo-inner">
+                    <div style="font-size:2.5rem;">&#128272;</div>
+                    <div style="margin-top:12px;font-size:1rem;color:var(--text-muted);">Select a contact to start
+                      chatting
+                    </div>
+                  </div>
+                </div>
+                <div id="chat-convo" style="display:none;height:100%;flex-direction:column;">
+                  <header class="chatgpt-header">
+                    <div class="chatgpt-header-left">
+                      <div class="chat-active-avatar" id="chat-active-avatar">?</div>
+                      <div>
+                        <div class="chat-active-name" id="chat-active-name">&#8212;</div>
+                        <div class="chat-active-status">&#128994; Online &bull; End-to-end encrypted</div>
+                      </div>
+                    </div>
+                    <div class="chatgpt-header-right">
+                      <div class="chatgpt-modes">
+                        <label><input type="radio" name="chat-mode" value="aes" checked> AES</label>
+                        <label><input type="radio" name="chat-mode" value="stego"> Stego</label>
+                        <label><input type="radio" name="chat-mode" value="both"> Both</label>
+                      </div>
+                    </div>
+                  </header>
+                  <div class="chatgpt-body">
+                    <div id="chat-log" class="chatgpt-messages" aria-live="polite"></div>
+                  </div>
+                  <footer class="chatgpt-footer">
+                    <div class="chatgpt-input-wrap">
+                      <div class="chat-attachment-wrapper">
+                        <button type="button" class="chatgpt-icon-btn" id="chat-attach-btn" aria-label="Attach">
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path
+                              d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48">
+                            </path>
+                          </svg>
+                        </button>
+                        <div id="chat-attach-menu" class="chat-attach-menu">
+                          <button type="button" class="attach-menu-item" id="attach-multimedia-btn">
+                            <span style="font-size:1.1rem;margin-right:8px;"></span> Send as Multimedia
+                          </button>
+                          <button type="button" class="attach-menu-item" id="attach-stego-btn">
+                            <span style="font-size:1.1rem;margin-right:8px;"></span> Use for Stego
+                          </button>
+                        </div>
+                      </div>
+                      <input type="file" id="chat-custom-image-input" accept="image/*" style="display:none">
+
+                      <div id="chat-image-preview" class="chat-image-preview">
+                        <img id="chat-image-preview-img" src="" alt="Attachment" />
+                        <div class="chat-image-preview-info">
+                          <span id="chat-image-preview-label">Multimedia</span>
+                          <button type="button" id="chat-image-preview-clear"
+                            aria-label="Remove attachment">&times;</button>
+                        </div>
+                      </div>
+
+                      <textarea id="chat-message" rows="1" placeholder="Message&#8230;"></textarea>
+                      <button type="button" class="chatgpt-icon-btn" aria-label="Record">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
+                          <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                          <line x1="12" y1="19" x2="12" y2="22"></line>
+                        </svg>
+                      </button>
+                      <button type="button" class="chatgpt-send-btn" id="chat-send-btn" aria-label="Send">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M22 2L11 13" />
+                          <path d="M22 2L15 22L11 13L2 9L22 2Z" />
+                        </svg>
+                      </button>
+                    </div>
+                    <div id="chat-status" class="chatgpt-status" aria-live="polite"></div>
+                  </footer>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- TEST TAB (formerly Analyze) -->
+        <section id="tab-test" class="tab-panel">
+          <div class="analyze-selector">
+            <button class="analyze-sel-btn is-active" data-panel="aes"><span class="analyze-sel-badge">AES</span><span
+                class="analyze-sel-label">Encryption only</span></button>
+            <button class="analyze-sel-btn" data-panel="stego"><span class="analyze-sel-badge">STEGO</span><span
+                class="analyze-sel-label">Steganography only</span></button>
+            <button class="analyze-sel-btn" data-panel="both"><span class="analyze-sel-badge">BOTH</span><span
+                class="analyze-sel-label">AES + Stego</span></button>
+            <button class="analyze-sel-btn" data-panel="compare"><span class="analyze-sel-badge">&#x2696;</span><span
+                class="analyze-sel-label">LSB vs DCT</span></button>
+          </div>
+          <section id="aes" class="card-section analyze-panel is-active">
+            <div class="card">
+              <span class="card-badge">ENCRYPTION</span>
+              <h3>AES only</h3>
+              <p>Encrypt and decrypt messages with AES. No image involved.</p>
+              <div class="tool-panel">
+                <div class="form-group">
+                  <label>Encrypt</label>
+                  <textarea id="aes-message" placeholder="Enter your secret message&#8230;" rows="2"></textarea>
+                  <button type="button" class="btn btn-card" id="aes-encrypt-btn">Encrypt</button>
+                  <div id="aes-cipher-out" class="output-box" aria-live="polite"></div>
+                </div>
+                <div class="form-group">
+                  <label>Decrypt</label>
+                  <textarea id="aes-cipher" placeholder="Paste cipher (base64) or use result above&#8230;"
+                    rows="2"></textarea>
+                  <button type="button" class="btn btn-card" id="aes-decrypt-btn">Decrypt</button>
+                  <div id="aes-message-out" class="output-box" aria-live="polite"></div>
+                </div>
+              </div>
+            </div>
+          </section>
+          <section id="stego" class="card-section analyze-panel">
+            <div class="card">
+              <span class="card-badge">STEGANOGRAPHY</span>
+              <h3>Stego only</h3>
+              <p>Hide a message inside an image (no encryption). Upload a carrier or use the default.</p>
+              <div class="tool-panel">
+                <div class="form-group"><label>Message to hide</label><textarea id="stego-message"
+                    placeholder="Your message&#8230;" rows="2"></textarea></div>
+                <div class="form-group"><label>Carrier image (optional)</label><input type="file" id="stego-carrier"
+                    accept="image/png,image/jpeg,image/jpg"></div>
+                <div class="form-group">
+                  <label>Steganography Algorithm</label>
+                  <select id="stego-algorithm-select" class="form-control">
+                    <option value="lsb">Least Significant Bit (LSB)</option>
+                    <option value="dct">Discrete Cosine Transform (DCT)</option>
+                  </select>
+                </div>
+                <div class="form-group"
+                  style="display:flex; gap:1.5rem; margin-top:0.5rem; justify-content: flex-start; align-items: center;">
+                  <label
+                    style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-size:0.85rem; color:var(--text-muted); margin:0;">
+                    <input type="checkbox" id="stego-apply-jpeg"
+                      style="width:16px; height:16px; accent-color:var(--accent);"> Apply JPEG Attack
+                  </label>
+                  <label
+                    style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-size:0.85rem; color:var(--text-muted); margin:0;">
+                    <input type="checkbox" id="stego-apply-noise"
+                      style="width:16px; height:16px; accent-color:var(--accent);"> Apply Noise Attack
+                  </label>
+                </div>
+                <button type="button" class="btn btn-card" id="stego-hide-btn" style="margin-top:10px;">Hide in
+                  image</button>
+
+                <div id="stego-download" class="output-box" aria-live="polite" style="margin-top:0.5rem;"></div>
+
+                <hr class="divider">
+                <div class="form-group">
+                  <label>Extract from stego image</label>
+                  <input type="file" id="stego-extract-file" accept="image/png,image/jpeg,image/jpg">
+                  <button type="button" class="btn btn-card" id="stego-extract-btn">Extract message</button>
+                  <div id="stego-extract-out" class="output-box" aria-live="polite"></div>
+                </div>
+                <button type="button" class="btn btn-card" id="stego-advanced-btn"
+                  style="display:none; width:100%; margin-top:1rem; border-color:var(--accent);">
+                  &#128202; See Advanced Analysis
+                </button>
+              </div>
+            </div>
+          </section>
+          <section id="both" class="card-section analyze-panel">
+            <div class="card">
+              <span class="card-badge">ALL-IN-ONE</span>
+              <h3>Both (AES + Stego)</h3>
+              <p>Encrypt your message, then hide the ciphertext inside an image. Maximum secrecy.</p>
+              <div class="tool-panel">
+                <div class="form-group"><label>Secret message</label><textarea id="both-message"
+                    placeholder="Message to encrypt and hide&#8230;" rows="2"></textarea></div>
+                <div class="form-group"><label>Carrier image (optional)</label><input type="file" id="both-carrier"
+                    accept="image/png,image/jpeg,image/jpg"></div>
+                <div class="form-group">
+                  <label>Steganography Algorithm</label>
+                  <select id="both-algorithm-select" class="form-control">
+                    <option value="lsb">AES + Least Significant Bit (LSB)</option>
+                    <option value="dct">AES + Discrete Cosine Transform (DCT)</option>
+                  </select>
+                </div>
+                <div class="form-group"
+                  style="display:flex; gap:1.5rem; margin-top:0.5rem; justify-content: flex-start; align-items: center;">
+                  <label
+                    style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-size:0.85rem; color:var(--text-muted); margin:0;">
+                    <input type="checkbox" id="both-apply-jpeg"
+                      style="width:16px; height:16px; accent-color:var(--accent);"> Apply JPEG Attack
+                  </label>
+                  <label
+                    style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-size:0.85rem; color:var(--text-muted); margin:0;">
+                    <input type="checkbox" id="both-apply-noise"
+                      style="width:16px; height:16px; accent-color:var(--accent);"> Apply Noise Attack
+                  </label>
+                </div>
+                <button type="button" class="btn btn-card" id="both-hide-btn" style="margin-top:10px;">Encrypt &amp;
+                  hide
+                  in image</button>
+
+                <div id="both-download" class="output-box" aria-live="polite" style="margin-top:0.5rem;"></div>
+                <div id="both-aes-out" class="output-box"
+                  style="margin-top:0.4rem;font-size:0.82rem;border-color:rgba(168,85,247,0.3);display:none;"
+                  aria-live="polite"></div>
+
+                <hr class="divider">
+                <div class="form-group">
+                  <label>Extract &amp; decrypt from image</label>
+                  <input type="file" id="both-extract-file" accept="image/png,image/jpeg,image/jpg">
+                  <button type="button" class="btn btn-card" id="both-extract-btn">Extract &amp; decrypt</button>
+                  <div id="both-extract-out" class="output-box" aria-live="polite"></div>
+                </div>
+                <button type="button" class="btn btn-card" id="both-advanced-btn"
+                  style="display:none; width:100%; margin-top:1rem; border-color:var(--accent);">
+                  &#128202; See Advanced Analysis
+                </button>
+              </div>
+            </div>
+          </section>
+          <section id="compare" class="card-section analyze-panel">
+            <div class="card">
+              <span class="card-badge">COMPARISON</span>
+              <h3>LSB vs DCT</h3>
+              <p>Compare quality metrics between Least Significant Bit and Discrete Cosine Transform steganography on
+                the
+                same message.</p>
+              <div class="tool-panel">
+                <div class="form-group"><label>Test message</label><textarea id="compare-message"
+                    placeholder="Enter a message to compare both algorithms&#8230;" rows="2"></textarea></div>
+                <div class="form-group"><label>Carrier image (optional)</label><input type="file" id="compare-carrier"
+                    accept="image/png,image/jpeg,image/jpg"></div>
+                <button type="button" class="btn btn-card" id="compare-run-btn" style="margin-top:10px;">Run
+                  Comparison</button>
+                <div id="compare-status" class="output-box" aria-live="polite" style="margin-top:0.5rem;"></div>
+                <div id="compare-results" style="margin-top:1rem;"></div>
+                <button type="button" class="btn btn-card" id="compare-advanced-btn"
+                  style="display:none; width:100%; margin-top:1rem; border-color:var(--accent);">
+                  &#128202; See Advanced Analysis
+                </button>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <!-- ML TAB — proper sibling, not nested in Analyze -->
+        <section id="tab-ml" class="tab-panel">
+
+          <!-- ML sub-tab bar -->
+          <div class="ml-subtab-bar">
+            <button class="ml-subtab-btn is-active" data-mltab="traffic">
+              <span class="ml-subtab-icon">&#128225;</span>
+              <span>Traffic</span>
+            </button>
+            <button class="ml-subtab-btn" data-mltab="steganalysis">
+              <span class="ml-subtab-icon">&#128269;</span>
+              <span>Steganalysis</span>
+            </button>
+            <button class="ml-subtab-btn" data-mltab="tampering">
+              <span class="ml-subtab-icon">&#128444;</span>
+              <span>Tampering</span>
+            </button>
+          </div>
+
+          <!-- TRAFFIC panel -->
+          <div id="ml-panel-traffic" class="ml-panel is-active">
+            <div class="ml-header-row">
+              <div>
+                <h3 class="ml-title">&#128225; Traffic Anomaly Detection</h3>
+                <p class="ml-subtitle">IsolationForest ML model monitoring live chat traffic. Detects port scans, DDoS,
+                  and data exfiltration patterns.</p>
+              </div>
+              <div class="ml-header-actions">
+                <button class="btn btn-card" id="traffic-refresh-btn">&#8635; Refresh</button>
+                <button class="btn ml-btn-danger" id="traffic-reset-btn">Reset</button>
+              </div>
+            </div>
+
+            <div class="ml-stat-row" id="traffic-stats">
+              <div class="ml-stat-card">
+                <div class="ml-stat-label">Total Packets</div>
+                <div class="ml-stat-value" id="stat-packets">&#8212;</div>
+              </div>
+              <div class="ml-stat-card">
+                <div class="ml-stat-label">Anomaly Status</div>
+                <div class="ml-stat-value" id="stat-anomaly">&#8212;</div>
+              </div>
+              <div class="ml-stat-card">
+                <div class="ml-stat-label">Alerts</div>
+                <div class="ml-stat-value" id="stat-alerts">&#8212;</div>
+              </div>
+              <div class="ml-stat-card">
+                <div class="ml-stat-label">Unique IPs</div>
+                <div class="ml-stat-value" id="stat-ips">&#8212;</div>
+              </div>
+            </div>
+
+            <div class="ml-canvas-card">
+              <div class="ml-canvas-label">Live Packet Stream</div>
+              <canvas id="traffic-canvas" width="800" height="120"></canvas>
+            </div>
+
+            <div class="ml-attack-row">
+              <div class="ml-attack-label">&#127919; Simulate Attack:</div>
+              <button class="btn ml-btn-attack" data-attack="portscan">Port Scan</button>
+              <button class="btn ml-btn-attack" data-attack="ddos">DDoS</button>
+              <button class="btn ml-btn-attack" data-attack="exfil">Data Exfil</button>
+            </div>
+
+            <div class="ml-alert-box" id="traffic-alert-log">
+              <div class="ml-alert-empty">No anomalies detected. Traffic is normal.</div>
+            </div>
+
+            <div class="ml-section-label" style="margin-top:16px;">Top Connections</div>
+            <div id="traffic-connections" class="ml-conn-table-wrap">
+              <div class="ml-alert-empty">No connection data yet.</div>
+            </div>
+          </div>
+
+          <!-- STEGANALYSIS panel -->
+          <div id="ml-panel-steganalysis" class="ml-panel">
+            <div class="ml-header-row">
+              <div>
+                <h3 class="ml-title">&#128269; RS Steganalysis</h3>
+                <p class="ml-subtitle">Statistical RS (Regular-Singular) analysis per RGB channel. Detects hidden LSB
+                  data
+                  by measuring pixel group asymmetry.</p>
+              </div>
+            </div>
+
+            <div class="ml-upload-zone" id="steg-upload-zone" style="position:relative;">
+              <div class="ml-upload-icon">&#128444;</div>
+              <div class="ml-upload-text">Drop an image or click to upload</div>
+              <div class="ml-upload-sub">PNG, JPG &#8212; try a stego image from the Chat tab</div>
+              <input type="file" id="steg-file-input" accept="image/png,image/jpeg,image/jpg"
+                style="position:absolute;inset:0;opacity:0;cursor:pointer;">
+            </div>
+
+            <div id="steg-results" style="display:none;">
+              <div class="ml-verdict-banner" id="steg-verdict-banner">
+                <div class="ml-verdict-icon" id="steg-verdict-icon">?</div>
+                <div>
+                  <div class="ml-verdict-text" id="steg-verdict-text">&#8212;</div>
+                  <div class="ml-verdict-conf" id="steg-verdict-conf">&#8212;</div>
+                </div>
+              </div>
+              <div class="ml-section-label">RS Statistics per Channel</div>
+              <div class="ml-rs-grid" id="steg-rs-grid"></div>
+              <div class="ml-section-label" style="margin-top:16px;">LSB Distribution (first 1000 pixels)</div>
+              <div class="ml-lsb-chart" id="steg-lsb-chart"></div>
+            </div>
+            <div id="steg-loading" class="ml-loading" style="display:none;">
+              <div class="ml-spinner"></div> Analyzing image&#8230;
+            </div>
+            <div id="steg-error" class="ml-error" style="display:none;"></div>
+          </div>
+
+          <!-- TAMPERING panel -->
+          <div id="ml-panel-tampering" class="ml-panel">
+            <div class="ml-header-row">
+              <div>
+                <h3 class="ml-title">&#128444; Image Tampering Detection</h3>
+                <p class="ml-subtitle">ELA + SVM classifier trained on CASIA2 dataset. 86% accuracy on 12,560 images.
+                </p>
+              </div>
+            </div>
+
+            <div class="ml-upload-zone" id="tamp-upload-zone" style="position:relative;">
+              <div class="ml-upload-icon">&#128248;</div>
+              <div class="ml-upload-text">Drop an image or click to upload</div>
+              <div class="ml-upload-sub">JPEG images give best results (ELA is JPEG-based)</div>
+              <input type="file" id="tamp-file-input" accept="image/png,image/jpeg,image/jpg"
+                style="position:absolute;inset:0;opacity:0;cursor:pointer;">
+            </div>
+
+            <div id="tamp-results" style="display:none;">
+              <div class="ml-verdict-banner" id="tamp-verdict-banner">
+                <div class="ml-verdict-icon" id="tamp-verdict-icon">?</div>
+                <div>
+                  <div class="ml-verdict-text" id="tamp-verdict-text">&#8212;</div>
+                  <div class="ml-verdict-conf" id="tamp-verdict-conf">&#8212;</div>
+                </div>
+              </div>
+              <div class="ml-section-label">ELA Feature Values</div>
+              <div class="ml-stat-row" style="margin-bottom:16px;">
+                <div class="ml-stat-card">
+                  <div class="ml-stat-label">Mean ELA</div>
+                  <div class="ml-stat-value" id="tamp-mean-ela">&#8212;</div>
+                </div>
+                <div class="ml-stat-card">
+                  <div class="ml-stat-label">Max ELA</div>
+                  <div class="ml-stat-value" id="tamp-max-ela">&#8212;</div>
+                </div>
+                <div class="ml-stat-card">
+                  <div class="ml-stat-label">Std ELA</div>
+                  <div class="ml-stat-value" id="tamp-std-ela">&#8212;</div>
+                </div>
+              </div>
+              <div class="ml-section-label">Image Analysis &#8212; Original vs ELA Heatmap</div>
+              <div class="ml-image-compare">
+                <div class="ml-image-panel">
+                  <div class="ml-image-label">Original</div>
+                  <img id="tamp-original-img" src="" alt="Original">
+                </div>
+                <div class="ml-image-panel">
+                  <div class="ml-image-label">ELA Heatmap <span style="color:#f87171;font-size:0.75rem;">(red =
+                      suspicious)</span></div>
+                  <img id="tamp-heatmap-img" src="" alt="ELA Heatmap">
+                </div>
+              </div>
+            </div>
+            <div id="tamp-loading" class="ml-loading" style="display:none;">
+              <div class="ml-spinner"></div> Running ELA analysis&#8230;
+            </div>
+            <div id="tamp-error" class="ml-error" style="display:none;"></div>
+          </div>
+
+        </section>
+        <!-- END ML TAB -->
+
+
+
+      </main>
+    </div>
+
+    <!-- Floating Chatbot Trigger & Mini Window -->
+    <div id="chatbot-backdrop" class="chatbot-backdrop" style="display:none;"></div>
+    <div id="chatbot-container"
+      style="position:fixed; bottom:40px; right:16px; z-index:9999; display:flex; flex-direction:column; align-items:flex-end; gap:12px;">
+
+      <!-- Mini Chat Window (Hidden by default) -->
+      <div id="mini-chatbot-window" class="mini-chat-window" style="display:none;">
+        <div id="mini-chat-resize-handle" class="mini-chat-resizer"></div>
+        <div class="mini-chat-header">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span class="mini-chat-avatar">🤖</span>
+            <span
+              style="font-weight:700; font-family:var(--font-pixel); font-size:0.8rem; text-transform:uppercase; letter-spacing:0.05em;">System
+              Assistant</span>
+          </div>
+          <button id="mini-chat-close" class="mini-chat-close-btn">&times;</button>
+        </div>
+        <div id="mini-chat-messages" class="mini-chat-body">
+          <div class="mini-chat-msg bot">
+            <div class="msg-content">Hello! How can I help you today?</div>
+          </div>
+        </div>
+        <div class="mini-chat-footer">
+          <input type="text" id="mini-chat-input" placeholder="Type a message..." autocomplete="off">
+          <button id="mini-chat-send" class="mini-chat-send-btn">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Trigger Button -->
+      <button id="chatbot-trigger" class="chatbot-trigger-btn" title="AI Assistant">
+        <span class="bot-icon">🤖</span>
+        <span class="bot-pulse"></span>
+      </button>
+    </div>
+
+    <a href="#" id="see-logs-link"
+      style="position:fixed; bottom:12px; right:16px; font-size:0.75rem; color:var(--text-muted); text-decoration:none; opacity:0.7; z-index:999; font-family:var(--font-mono);">
+      &#128196; See Logs
+    </a>
+
+  </div>
+
+  <!-- Advanced Analysis Modal Overlay (Image 2 style) -->
+  <div id="analysis-modal" class="analysis-modal-overlay" style="display:none;">
+    <div class="analysis-modal-content">
+      <button id="analysis-modal-close" class="logs-close-btn" style="top: 1rem; right: 1.5rem;">&times;</button>
+      <div id="analysis-content"></div>
+    </div>
+  </div>
+
+  <!-- Add Contact Modal (Image 1 Style) -->
+  <div id="add-contact-modal" class="analysis-modal-overlay" style="display:none;">
+    <div class="analysis-modal-panel" style="width: 450px;">
+      <div class="analysis-modal-header" style="background: var(--accent); color: var(--bg);">
+        <span
+          style="display: flex; align-items: center; gap: 0.6rem; padding: 0.8rem 1.2rem; font-weight: 700; text-transform: uppercase; font-family: var(--font-pixel);">
+          <span style="font-size: 1.2rem;">+</span> Add Contact
+        </span>
+        <button type="button" id="add-contact-modal-close" class="analysis-modal-close"
+          style="color: var(--bg); opacity: 0.7;"></button>
+      </div>
+      <div class="analysis-modal-body" style="padding: 1.5rem;">
+        <label
+          style="display: block; font-family: var(--font-pixel); font-size: 0.9rem; margin-bottom: 0.8rem; color: #fff;">Enter
+          Friend Code</label>
+        <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
+          <input type="text" id="add-friend-modal-code" placeholder="CODE-XXXXX"
+            style="flex: 1; padding: 1rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text); font-family: var(--font-mono); font-size: 1.1rem; letter-spacing: 0.1em;">
+          <button type="button" id="add-friend-modal-btn" class="btn"
+            style="background: var(--accent); color: var(--bg); font-family: var(--font-pixel); padding: 0 1.5rem; font-weight: 700;">ADD</button>
+        </div>
+        <div id="add-friend-modal-status"
+          style="font-size: 0.8rem; margin-top: -1rem; margin-bottom: 1.5rem; font-family: var(--font-pixel); min-height: 1rem;">
+        </div>
+
+        <button type="button" id="view-pending-btn" class="btn"
+          style="width: 100%; padding: 0.8rem; background: none; border: 1px solid rgba(255,255,255,0.2); font-family: var(--font-pixel); text-transform: uppercase;">
+          View Pending Invitations
+        </button>
+
+        <!-- Inline requests list, shown when button is clicked -->
+        <div id="inline-requests-area" style="display:none; margin-top:1rem;">
+          <div id="inline-requests-list">
+            <div style="color:var(--text-muted);text-align:center;padding:1.5rem;font-family:var(--font-pixel);">No
+              pending requests.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- UID Card Modal (Image 3 Style) -->
+  <div id="uid-card-modal" class="analysis-modal-overlay" style="display:none;">
+    <div class="analysis-modal-panel" style="width: 500px; border-color: var(--accent);">
+      <div class="analysis-modal-header"
+        style="background: rgba(16,185,129,0.2); border-bottom: 1px solid var(--accent);">
+        <span
+          style="flex: 1; text-align: center; font-family: var(--font-pixel); letter-spacing: 0.2em; font-weight: 700; color: var(--accent); padding: 0.7rem;">UID
+          CARD</span>
+        <button type="button" id="uid-card-close" class="analysis-modal-close" style="color: var(--accent);"></button>
+      </div>
+      <div class="analysis-modal-body" style="padding: 2rem;">
+        <div style="display: flex; gap: 2rem; align-items: flex-start; margin-bottom: 2rem;">
+          <div
+            style="position: relative; width: 140px; height: 140px; border: 2px solid var(--accent); padding: 5px; background: rgba(0,0,0,0.3);">
+            <div id="uid-card-avatar" style="width: 100%; height: 100%; overflow: hidden;"></div>
+            <div id="uid-card-status-dot"
+              style="position: absolute; bottom: -5px; right: -5px; width: 20px; height: 20px; border-radius: 50%; border: 3px solid #1a1a1a; background: #666; box-shadow: 0 0 10px rgba(0,0,0,0.5);">
+            </div>
+          </div>
+          <div style="flex: 1;">
+            <div style="margin-bottom: 1.5rem;">
+              <small
+                style="color: var(--text-muted); font-family: var(--font-pixel); text-transform: uppercase; font-size: 0.65rem;">Name</small>
+              <div id="uid-card-name"
+                style="font-family: var(--font-pixel); font-size: 1.4rem; color: #fff; margin-top: 0.3rem;">----</div>
+            </div>
+            <div>
+              <small
+                style="color: var(--text-muted); font-family: var(--font-pixel); text-transform: uppercase; font-size: 0.65rem;">Unique
+                ID</small>
+              <div id="uid-card-code"
+                style="font-family: var(--font-pixel); font-size: 1.4rem; color: var(--accent); margin-top: 0.3rem; letter-spacing: 0.05em;">
+                ----</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 2rem;">
+          <h4
+            style="font-family: var(--font-pixel); text-transform: uppercase; font-size: 1rem; margin-bottom: 0.8rem; display: flex; align-items: center; gap: 0.5rem;">
+            BIOGRAPHY</h4>
+          <div
+            style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 1.5rem; min-height: 100px; color: var(--text-muted); font-family: var(--font-main); line-height: 1.5;">
+            <span id="uid-card-about">No biography provided.</span>
+          </div>
+        </div>
+
+        <div style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1.5rem; text-align: center;">
+          <span
+            style="font-family: var(--font-pixel); font-size: 0.7rem; color: var(--accent); opacity: 0.6; letter-spacing: 0.1em; text-transform: uppercase;">Secure
+            Stego Access Verified</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Image Preview Modal (Expansive view for analysis) -->
+  <div id="image-preview-modal" class="settings-overlay" style="display:none;">
+    <div class="expansive-preview-card" style="text-align: center;">
+      <button id="image-preview-close" class="settings-close-btn" style="top: 0.75rem; right: 1.25rem;"></button>
+      <div class="settings-header" style="margin-bottom: 1rem; flex-shrink: 0;">
+        <span
+          style="font-family:var(--font-main); font-weight: 700; font-size:1.4rem; letter-spacing:0.05em; color:var(--text); text-transform: uppercase;">Image
+          Inspection</span>
+      </div>
+      <div
+        style="flex: 1; min-height: 0; background: rgba(0,0,0,0.6); border-radius: 12px; border: 2px solid rgba(168,85,247,0.2); display: flex; align-items: center; justify-content: center; overflow: auto; position: relative;">
+        <img id="image-preview-img" src="" alt="Full Preview"
+          style="max-width: 95%; max-height: 95%; object-fit: contain; border: 1px solid var(--accent); display: block; image-rendering: pixelated; box-shadow: 0 0 40px rgba(0,0,0,0.5);">
+      </div>
+
+      <div
+        style="margin-top: 1rem; font-family:var(--font-mono); font-size:0.9rem; color:var(--text-muted); flex-shrink: 0; display: flex; justify-content: center; gap: 2rem;">
+        <span>Shift + Click to download original</span>
+        <span style="color:var(--accent-dim)">Scroll to zoom if needed</span>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/cyber-rain.js?v=2"></script>
+  <script src="js/settings.js?v=2"></script>
+  <script type="module" src="js/main.js?v=2"></script>
+
+  <!-- Transformation Logs Modal (Functional - Image 5 style) -->
+  <div id="logs-overlay" class="logs-overlay">
+    <div class="logs-panel">
+      <button id="logs-close-btn" class="logs-close-btn">&times;</button>
+
+      <div class="logs-header">
+        <div class="logs-badge">Logs</div>
+        <h2 class="logs-title">Transformation logs</h2>
+        <p class="logs-desc">Inspect every layer of each message — plaintext, DH keys, AES ciphertext, and stego output.
+        </p>
+      </div>
+
+      <div class="logs-filter-bar">
+        <input type="text" id="logs-client-filter" class="logs-search-input"
+          placeholder="Client ID to inspect (optional)">
+        <button id="logs-refresh-btn" class="btn btn-primary"
+          style="padding: 0 1.5rem; font-family:var(--font-pixel);">Refresh</button>
+      </div>
+
+      <div class="logs-tabs">
+        <button class="logs-tab-btn active" data-tab="messages">
+          <span>&#128172;</span>
+          <span>Messages</span>
+        </button>
+        <button class="logs-tab-btn" data-tab="dh">
+          <span>&#128273;</span>
+          <span>DH Keys</span>
+        </button>
+        <button class="logs-tab-btn" data-tab="encryption">
+          <span>&#128274;</span>
+          <span>Encryption</span>
+        </button>
+        <button class="logs-tab-btn" data-tab="stego">
+          <span>&#128443;</span>
+          <span>Stego</span>
+        </button>
+        <button class="logs-tab-btn" data-tab="system">
+          <span>&#9881;</span>
+          <span>System</span>
+        </button>
+      </div>
+
+      <div id="logs-content-area" class="logs-content">
+        <!-- Logs will be injected here -->
+        <div style="color:var(--text-muted); text-align:center; margin-top:4rem; font-family:var(--font-mono);">
+          Click REFRESH to pull latest communication logs...
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Toast notification -->
+
+</body>
+
+</html>
